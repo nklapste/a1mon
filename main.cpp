@@ -10,6 +10,7 @@ std::tuple<std::string, std::string> get_target(std::string ps_output, std::stri
     printf("%s", str.c_str());
 
     std::match_results< std::string::const_iterator > matches;
+
     std::regex_match(ps_output, matches, rgx);
     for( std::size_t index = 1; index < matches.size(); ++index ){
         std::cout << matches[ index ] << '\n';
@@ -31,15 +32,21 @@ std::tuple<std::string, std::string> get_child(std::string ps_output, std::strin
     printf("%s", str.c_str());
 
     std::match_results< std::string::const_iterator > matches;
-    std::regex_match(ps_output, matches, rgx);
-    for( std::size_t index = 1; index < matches.size(); ++index ){
-        std::cout << matches[ index ] << '\n';
-    }
+    for(std::sregex_iterator i = std::sregex_iterator(ps_output.begin(), ps_output.end(), rgx);
+        i != std::sregex_iterator();
+        ++i ) {
+        std::smatch m = *i;
+        for (std::size_t index = 1; index < m.size(); ++index) {
+                std::cout << m[index] << '\n';
+        }
 
-    if(std::regex_search(ps_output, matches, rgx)) {
-        std::cout << "Match found\n";
-        for (size_t i = 0; i < matches.size(); ++i) {
-            std::cout << i << ": '" << matches[i].str() << "'\n";
+        if (std::regex_search(ps_output, m, rgx)) {
+            std::cout << "Match found\n";
+            for (size_t k= 0; k < m.size(); ++k) {
+                std::cout << k << ": '" << m[k].str() << "'\n";
+            }
+        } else {
+            printf("No match found");
         }
     }
     return std::make_tuple(matches[2], matches[5]);
@@ -99,7 +106,7 @@ int main(int argc, char **argv) {
         process = get_target(ps_output, pid);
 
         pl.push_back(process);
-
+        get_child(ps_output, std::get<0>(process));
         sleep(interval);
     }
 }
