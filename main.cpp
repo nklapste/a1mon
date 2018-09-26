@@ -1,10 +1,27 @@
+/**
+ * a1mon
+ *
+ * @author Nathan Klapstein (nklapste)
+ * @version 0.0.0
+ */
+
 #include <iostream>
 #include <sys/resource.h>
 #include <regex>
 #include <unistd.h>
 
+typedef std::tuple<std::string, std::string, std::string> process;
+typedef std::vector<process> process_list;
 
-std::tuple<std::string, std::string, std::string> get_target(std::string ps_output, std::string pid){
+
+/**
+ * Use regex to search for the pid within the output of the bash command ps.
+ *
+ * @param ps_output output of the bash ps command.
+ * @param pid process id to search for.
+ * @return the process tuple of matched pid, if no match was found all contents of the process tuple will be empty.
+ */
+process get_target(std::string ps_output, const std::string &pid){
     std::string str = "(\\S+)\\s+("+pid+")\\s+([0-9]+) ([a-bA-Z]) [0-9]{2}:[0-9]{2}:[0-9]{2}\\s+(\\S+)";
     std::regex rgx(str.c_str());
 
@@ -17,11 +34,15 @@ std::tuple<std::string, std::string, std::string> get_target(std::string ps_outp
     return std::make_tuple(matches[2], matches[3], matches[5]);
 }
 
-typedef std::tuple<std::string, std::string, std::string> process;
-typedef std::vector<process> process_list;
 
-
-process_list get_childs(std::string ps_output, std::string ppid){
+/**
+ * Use regex to search for child processes of the given ppid within the output of the bash command ps.
+ *
+ * @param ps_output output of the bash ps command.
+ * @param ppid process parent id to match for children.
+ * @return a process_list of all the children of the ppid.
+ */
+process_list get_childs(std::string ps_output, const std::string &ppid){
     process_list child_pl;
 
     std::string regexStr = "(\\S+)\\s+([0-9]+)\\s+("+ppid+") ([a-bA-Z]) [0-9]{2}:[0-9]{2}:[0-9]{2}\\s+(\\S+)";
@@ -43,13 +64,16 @@ process_list get_childs(std::string ps_output, std::string ppid){
 }
 
 
-
+/**
+ * Execute the bash ps command using popen.
+ *
+ * @return the output of the bash ps command.
+ */
 std::string run_ps() {
     std::string data;
     FILE * stream;
     const int max_buffer = 256;
     char buffer[max_buffer];
-
     stream = popen("ps -u $USER -o user,pid,ppid,state,start,cmd --sort start", "r");
     if(stream) {
         while (!feof(stream))
@@ -58,20 +82,17 @@ std::string run_ps() {
     }
     std::cout << data << std::endl;
     return data;
-
 }
 
 
-
-
 int main(int argc, char **argv) {
+    // parse command line args
     unsigned int interval;
     char *pid;
     if (argc <= 1){
         printf("missing arguments\n");
         return 1;
-    }
-    if (argc >= 2){
+    } else {
         pid = argv[1];
     }
     if (argc == 3) {
@@ -92,31 +113,25 @@ int main(int argc, char **argv) {
 
     process_list child_pl;
     for (;;){
-        // todo get current state of head process
         // run ps and concentrate its output
         std::string ps_output = run_ps();
+        // TODO: pid is getting set to null
         process head_process = get_target(ps_output, pid);
         if (std::get<0>(head_process).empty()){
-            printf("head process dead/missing");
+            std::cout << "head process" << pid << " dead/missing" << std::endl;
             for(auto it = child_pl.rbegin(); it != child_pl.rend(); ++it) {
                 std::cout << "Terminating child: "<< std::get<0>(*it) << std::endl;
-                /* std::cout << *it; ... */
+                // todo if head process is dead kill head processes children
             }
-            break;
+            return 0;
         } else {
             std::cout << "Head process found: "<< std::get<0>(head_process) << std::endl;
         }
-        // todo get all children of head process
-        child_pl = get_childs(ps_output, std::get<0>(head_process));
-        // todo if head process is dead kill head processes children
 
-        // todo test
+        // get all children of head process
+        child_pl = get_childs(ps_output, std::get<0>(head_process));
+
+        // sleep to avoid resource hogging
         sleep(interval);
-        printf("head process dead/missing");
-        for(auto it = child_pl.rbegin(); it != child_pl.rend(); ++it) {
-            std::cout << "Terminating child: "<< std::get<0>(*it) << std::endl;
-            /* std::cout << *it; ... */
-        }
-        break;
     }
 }
