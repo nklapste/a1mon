@@ -1,55 +1,45 @@
 #include <iostream>
 #include <sys/resource.h>
 #include <regex>
-#include <zconf.h>
+#include <unistd.h>
 
 
-std::tuple<std::string, std::string> get_target(std::string ps_output, std::string pid){
+std::tuple<std::string, std::string, std::string> get_target(std::string ps_output, std::string pid){
     std::string str = "(\\S+)\\s+("+pid+")\\s+([0-9]+) ([a-bA-Z]) [0-9]{2}:[0-9]{2}:[0-9]{2}\\s+(\\S+)";
     std::regex rgx(str.c_str());
-    printf("%s", str.c_str());
 
     std::match_results< std::string::const_iterator > matches;
-
     std::regex_match(ps_output, matches, rgx);
-    for( std::size_t index = 1; index < matches.size(); ++index ){
-        std::cout << matches[ index ] << '\n';
-    }
 
     if(std::regex_search(ps_output, matches, rgx)) {
-        std::cout << "Match found\n";
-        for (size_t i = 0; i < matches.size(); ++i) {
-            std::cout << i << ": '" << matches[i].str() << "'\n";
-        }
+        std::cout << "expression match: " << matches[0] << std::endl;
     }
-    return std::make_tuple(matches[2], matches[5]);
+    return std::make_tuple(matches[2], matches[3], matches[5]);
 }
 
+typedef std::tuple<std::string, std::string, std::string> process;
+typedef std::vector<process> process_list;
 
-std::tuple<std::string, std::string> get_child(std::string ps_output, std::string ppid){
-    std::string str = "(\\S+)\\s+([0-9]+)\\s+("+ppid+") ([a-bA-Z]) [0-9]{2}:[0-9]{2}:[0-9]{2}\\s+(\\S+)";
-    std::regex rgx(str.c_str());
-    printf("%s", str.c_str());
 
-    std::match_results< std::string::const_iterator > matches;
-    for(std::sregex_iterator i = std::sregex_iterator(ps_output.begin(), ps_output.end(), rgx);
-        i != std::sregex_iterator();
-        ++i ) {
-        std::smatch m = *i;
-        for (std::size_t index = 1; index < m.size(); ++index) {
-                std::cout << m[index] << '\n';
-        }
+process_list get_childs(std::string ps_output, std::string ppid){
+    process_list child_pl;
 
-        if (std::regex_search(ps_output, m, rgx)) {
-            std::cout << "Match found\n";
-            for (size_t k= 0; k < m.size(); ++k) {
-                std::cout << k << ": '" << m[k].str() << "'\n";
-            }
-        } else {
-            printf("No match found");
-        }
+    std::string regexStr = "(\\S+)\\s+([0-9]+)\\s+("+ppid+") ([a-bA-Z]) [0-9]{2}:[0-9]{2}:[0-9]{2}\\s+(\\S+)";
+    std::regex e(regexStr.c_str());
+
+    std::sregex_iterator iter(ps_output.begin(), ps_output.end(), e);
+    std::sregex_iterator end;
+
+    while(iter != end)
+    {
+        std::cout << "expression match: " << (*iter)[0] << std::endl;
+        std::tuple<std::string, std::string, std::string> process = std::make_tuple((*iter)[2], (*iter)[3], (*iter)[5]);
+        child_pl.push_back(process);
+        process_list child_child_pl = get_childs(ps_output, (*iter)[2]);
+        child_pl.insert(child_pl.end(), child_child_pl.begin(), child_child_pl.end());
+        ++iter;
     }
-    return std::make_tuple(matches[2], matches[5]);
+    return child_pl;
 }
 
 
@@ -66,23 +56,26 @@ std::string run_ps() {
             if (fgets(buffer, max_buffer, stream) != NULL) data.append(buffer);
         pclose(stream);
     }
+    std::cout << data << std::endl;
     return data;
+
 }
-typedef std::vector< std::tuple<std::string, std::string> > process_list;
+
+
+
 
 int main(int argc, char **argv) {
-    unsigned int interval = 0;
-    char *pid = nullptr;
-    if (argc < 0){
+    unsigned int interval;
+    char *pid;
+    if (argc <= 1){
         printf("missing arguments\n");
         return 1;
     }
-    if (argc >= 1){
+    if (argc >= 2){
         pid = argv[1];
     }
     if (argc == 3) {
         interval = (unsigned int) strtol(argv[2], (char **) NULL, 10);
-
     } else {
         interval = 3;
     }
@@ -91,22 +84,39 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    // set cpu time limit as a safeguard
     struct rlimit rilimit;
     rilimit.rlim_cur = 600;
     rilimit.rlim_max = 600;
     setrlimit(RLIMIT_CPU, &rilimit);
 
-    std::string ps_output = run_ps();
-    process_list pl;
-    std::tuple<std::string, std::string> process;
-    process = get_target(ps_output, pid);
-
+    process_list child_pl;
     for (;;){
-        std::tuple<std::string, std::string> process;
-        process = get_target(ps_output, pid);
+        // todo get current state of head process
+        // run ps and concentrate its output
+        std::string ps_output = run_ps();
+        process head_process = get_target(ps_output, pid);
+        if (std::get<0>(head_process).empty()){
+            printf("head process dead/missing");
+            for(auto it = child_pl.rbegin(); it != child_pl.rend(); ++it) {
+                std::cout << "Terminating child: "<< std::get<0>(*it) << std::endl;
+                /* std::cout << *it; ... */
+            }
+            break;
+        } else {
+            std::cout << "Head process found: "<< std::get<0>(head_process) << std::endl;
+        }
+        // todo get all children of head process
+        child_pl = get_childs(ps_output, std::get<0>(head_process));
+        // todo if head process is dead kill head processes children
 
-        pl.push_back(process);
-        get_child(ps_output, std::get<0>(process));
+        // todo test
         sleep(interval);
+        printf("head process dead/missing");
+        for(auto it = child_pl.rbegin(); it != child_pl.rend(); ++it) {
+            std::cout << "Terminating child: "<< std::get<0>(*it) << std::endl;
+            /* std::cout << *it; ... */
+        }
+        break;
     }
 }
