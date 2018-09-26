@@ -9,6 +9,8 @@
 #include <sys/resource.h>
 #include <regex>
 #include <unistd.h>
+#include <bits/signum.h>
+#include <signal.h>
 
 typedef std::tuple<std::string, std::string, std::string> process;
 typedef std::vector<process> process_list;
@@ -121,7 +123,8 @@ int main(int argc, char **argv) {
             std::cout << "head process" << pid << " dead/missing" << std::endl;
             for(auto it = child_pl.rbegin(); it != child_pl.rend(); ++it) {
                 std::cout << "Terminating child: "<< std::get<0>(*it) << std::endl;
-                // todo if head process is dead kill head processes children
+                pid_t c_pid = stoi(std::get<0>(*it), nullptr, 10);
+                kill(c_pid, SIGKILL);
             }
             return 0;
         } else {
