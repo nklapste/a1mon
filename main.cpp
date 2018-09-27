@@ -113,19 +113,27 @@ int main(int argc, char **argv) {
     rilimit.rlim_max = 600;
     setrlimit(RLIMIT_CPU, &rilimit);
 
+    u_int loop_count = 0;
     process_list child_pl;
     for (;;){
+        // todo better formatting
+        printf("a1mon [counter=%d, pid=%u, target_pid=%s, interval=%d sec]:\n",loop_count, getpid(), pid, interval);
+
         // run ps and concentrate its output
         std::string ps_output = run_ps();
+        printf("--------------------\n");
+
         // TODO: pid is getting set to null
         process head_process = get_target(ps_output, pid);
         if (std::get<0>(head_process).empty()){
-            std::cout << "head process" << pid << " dead/missing" << std::endl;
+            std::cout << "a1mon: target appears to have terminated; cleaning" << std::endl;
             for(auto it = child_pl.rbegin(); it != child_pl.rend(); ++it) {
-                std::cout << "Terminating child: "<< std::get<0>(*it) << std::endl;
+                printf("terminating [%s, %s]\n", std::get<0>(*it).c_str(), std::get<2>(*it).c_str());
+//                std::cout << "terminating ["<< std::get<0>(*it) << std::endl;
                 pid_t c_pid = stoi(std::get<0>(*it), nullptr, 10);
                 kill(c_pid, SIGKILL);
             }
+            std::cout << "exiting a1mon" << std::endl;
             return 0;
         } else {
             std::cout << "Head process found: "<< std::get<0>(head_process) << std::endl;
@@ -134,7 +142,19 @@ int main(int argc, char **argv) {
         // get all children of head process
         child_pl = get_childs(ps_output, std::get<0>(head_process));
 
+        // print head process
+        printf("[0:[%s,%s]", pid,std::get<2>(head_process).c_str());
+        // iterate through child processes
+        for(process_list::size_type i = 0; i != child_pl.size(); i++) {
+            /* std::cout << v[i]; ... */
+            printf(", %lu:[%s,%s]", i, std::get<0>(child_pl[i]).c_str(), std::get<2>(child_pl[i]).c_str());
+        }
+        printf("]\n");
+
         // sleep to avoid resource hogging
         sleep(interval);
+
+        // iterate the loop counter
+        ++loop_count;
     }
 }
