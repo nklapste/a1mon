@@ -117,7 +117,7 @@ int main(int argc, char **argv) {
     process_list child_pl;
     for (;;){
         // todo better formatting
-        printf("a1mon [counter=%d, pid=%u, target_pid=%s, interval=%d sec]:\n",loop_count, getpid(), pid, interval);
+        printf("a1mon [counter=%2d, pid=%5u, target_pid=%5s, interval=%2d sec]:\n",loop_count, getpid(), pid, interval);
 
         // run ps and concentrate its output
         std::string ps_output = run_ps();
