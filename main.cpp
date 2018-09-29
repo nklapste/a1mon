@@ -22,11 +22,12 @@ typedef std::vector<process> process_list;
  * @param pid process id to search for.
  * @return the process tuple of matched pid, if no match was found all contents of the process tuple will be empty.
  */
-process get_target(const std::string &ps_output, const pid_t &pid){
-    std::string str = "(\\S+)\\s+("+std::to_string(pid)+")\\s+([0-9]+) ([a-bA-Z]) [0-9]{2}:[0-9]{2}:[0-9]{2}\\s+(\\S+)";
+process get_target(const std::string &ps_output, const pid_t &pid) {
+    std::string str =
+            "(\\S+)\\s+(" + std::to_string(pid) + ")\\s+([0-9]+) ([a-bA-Z]) [0-9]{2}:[0-9]{2}:[0-9]{2}\\s+(\\S+)";
     std::regex rgx(str.c_str());
 
-    std::match_results< std::string::const_iterator > matches;
+    std::match_results<std::string::const_iterator> matches;
     std::regex_match(ps_output, matches, rgx);
 
     return std::make_tuple(std::stoi(matches[2], nullptr, 10), std::stoi(matches[3], nullptr, 10), matches[5]);
@@ -40,17 +41,19 @@ process get_target(const std::string &ps_output, const pid_t &pid){
  * @param ppid process parent id to match for children.
  * @return a process_list of all the children of the ppid.
  */
-process_list get_childs(const std::string ps_output, const pid_t &ppid){
+process_list get_childs(const std::string ps_output, const pid_t &ppid) {
     process_list child_pl;
 
-    std::string regexStr = "(\\S+)\\s+([0-9]+)\\s+("+std::to_string(ppid)+") ([a-bA-Z]) [0-9]{2}:[0-9]{2}:[0-9]{2}\\s+(\\S+)";
+    std::string regexStr =
+            "(\\S+)\\s+([0-9]+)\\s+(" + std::to_string(ppid) + ") ([a-bA-Z]) [0-9]{2}:[0-9]{2}:[0-9]{2}\\s+(\\S+)";
     std::regex e(regexStr.c_str());
 
     std::sregex_iterator iter(ps_output.begin(), ps_output.end(), e);
     std::sregex_iterator end;
 
-    while(iter != end) {
-        process process = std::make_tuple(std::stoi((*iter)[2], nullptr, 10), std::stoi((*iter)[3], nullptr, 10), (*iter)[5]);
+    while (iter != end) {
+        process process = std::make_tuple(std::stoi((*iter)[2], nullptr, 10), std::stoi((*iter)[3], nullptr, 10),
+                                          (*iter)[5]);
         child_pl.push_back(process);
         process_list child_child_pl = get_childs(ps_output, std::stoi((*iter)[2], nullptr, 10));
         child_pl.insert(child_pl.end(), child_child_pl.begin(), child_child_pl.end());
@@ -67,11 +70,11 @@ process_list get_childs(const std::string ps_output, const pid_t &ppid){
  */
 std::string run_ps() {
     std::string data;
-    FILE * stream;
+    FILE *stream;
     const int max_buffer = 256;
     char buffer[max_buffer];
     stream = popen("ps -u $USER -o user,pid,ppid,state,start,cmd --sort start", "r");
-    if(stream) {
+    if (stream) {
         while (!feof(stream))
             if (fgets(buffer, max_buffer, stream) != NULL) data.append(buffer);
         pclose(stream);
@@ -98,8 +101,8 @@ int main(int argc, char **argv) {
     // parse command line args
     unsigned int interval;
     pid_t pid;
-    if (argc <= 1){
-        printf("missing arguments\n");
+    if (argc <= 1) {
+        printf("ERROR: missing arguments\n");
         return 1;
     } else {
         pid = std::stoi(argv[1], nullptr, 10);
@@ -116,9 +119,10 @@ int main(int argc, char **argv) {
 
     u_int loop_count = 0;
     process_list child_pl;
-    for (;;){
+    for (;;) {
         // todo better formatting
-        printf("a1mon [counter=%2d, pid=%5u, target_pid=%5u, interval=%2d sec]:\n",loop_count, getpid(), pid, interval);
+        printf("a1mon [counter=%2d, pid=%5u, target_pid=%5u, interval=%2d sec]:\n", loop_count, getpid(), pid,
+               interval);
 
         // run ps and concentrate its output
         std::string ps_output = run_ps();
@@ -126,16 +130,16 @@ int main(int argc, char **argv) {
 
         // TODO: pid is getting set to null
         process head_process = get_target(ps_output, pid);
-        if (std::get<0>(head_process)==0){ //todo debug find null of
+        if (std::get<0>(head_process) == 0) { //todo debug find null of
             std::cout << "a1mon: target appears to have terminated; cleaning" << std::endl;
-            for(auto it = child_pl.rbegin(); it != child_pl.rend(); ++it) {
+            for (auto it = child_pl.rbegin(); it != child_pl.rend(); ++it) {
                 printf("terminating [%u, %s]\n", std::get<0>(*it), std::get<2>(*it).c_str());
                 kill(std::get<0>(*it), SIGKILL);
             }
-            std::cout << "exiting a1mon" << std::endl;
+            printf("exiting a1mon\n");
             return 0;
         } else {
-            std::cout << "Head process found: "<< std::get<0>(head_process) << std::endl;
+            printf("Head process found: %u\n", std::get<0>(head_process));
         }
 
         // get all children of head process
@@ -144,7 +148,7 @@ int main(int argc, char **argv) {
         // print head process
         printf("[0:[%u,%s]", pid, std::get<2>(head_process).c_str());
         // iterate through child processes
-        for(process_list::size_type i = 0; i != child_pl.size(); i++) {
+        for (process_list::size_type i = 0; i != child_pl.size(); i++) {
             printf(", %lu:[%u,%s]", i, std::get<0>(child_pl[i]), std::get<2>(child_pl[i]).c_str());
         }
         printf("]\n");
