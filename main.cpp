@@ -41,7 +41,7 @@ process get_target(const std::string &ps_output, const pid_t &pid) {
  * @param ppid process parent id to match for children.
  * @return a process_list of all the children of the ppid.
  */
-process_list get_childs(const std::string ps_output, const pid_t &ppid) {
+process_list get_childs(const std::string &ps_output, const pid_t &ppid) {
     process_list child_pl;
 
     std::string regexStr =
@@ -131,7 +131,7 @@ int main(int argc, char **argv) {
         // TODO: pid is getting set to null
         process head_process = get_target(ps_output, pid);
         if (std::get<0>(head_process) == 0) { //todo debug find null of
-            std::cout << "a1mon: target appears to have terminated; cleaning" << std::endl;
+            printf("a1mon: target appears to have terminated; cleaning\n");
             for (auto it = child_pl.rbegin(); it != child_pl.rend(); ++it) {
                 printf("terminating [%u, %s]\n", std::get<0>(*it), std::get<2>(*it).c_str());
                 kill(std::get<0>(*it), SIGKILL);
