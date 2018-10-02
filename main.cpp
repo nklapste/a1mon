@@ -22,14 +22,19 @@ typedef std::vector<process> process_list;
  * @param pid process id to search for.
  * @return the process tuple of matched pid, if no match was found all contents of the process tuple will be empty.
  */
-process get_target(const std::string &ps_output, const pid_t &pid) {
-    std::string str =
-            "(\\S+)\\s+(" + std::to_string(pid) + ")\\s+([0-9]+) ([a-bA-Z]) [0-9]{2}:[0-9]{2}:[0-9]{2}\\s+(\\S+)";
+process get_target(const std::string &ps_output,  pid_t pid) {
+    std::string str = "(\\S+)\\s+("+std::to_string(pid)+")\\s+([0-9]+) ([a-bA-Z]) [0-9]{2}:[0-9]{2}:[0-9]{2}\\s+(\\S+)";
     std::regex rgx(str.c_str());
 
-    std::match_results<std::string::const_iterator> matches;
-    std::regex_match(ps_output, matches, rgx);
+    std::match_results< std::string::const_iterator > matches;
 
+    std::regex_match(ps_output, matches, rgx);
+    for( std::size_t index = 1; index < matches.size(); ++index ){
+        std::cout << matches[ index ] << '\n';
+    }
+
+    if(std::regex_search(ps_output, matches, rgx)) {
+    }
     return std::make_tuple(std::stoi(matches[2], nullptr, 10), std::stoi(matches[3], nullptr, 10), matches[5]);
 }
 
@@ -71,7 +76,7 @@ process_list get_childs(const std::string &ps_output, const pid_t &ppid) {
 std::string run_ps() {
     std::string data;
     FILE *stream;
-    const int max_buffer = 256;
+    const int max_buffer = 3000;
     char buffer[max_buffer];
     stream = popen("ps -u $USER -o user,pid,ppid,state,start,cmd --sort start", "r");
     if (stream) {
@@ -100,11 +105,13 @@ int main(int argc, char **argv) {
 
     // parse command line args
     unsigned int interval;
-    pid_t pid;
+//    char *pid = nullptr;
+    pid_t  pid;
     if (argc <= 1) {
         printf("ERROR: missing arguments\n");
         return 1;
     } else {
+//        pid = argv[1];
         pid = std::stoi(argv[1], nullptr, 10);
     }
     if (argc == 3) {
@@ -139,7 +146,7 @@ int main(int argc, char **argv) {
             printf("exiting a1mon\n");
             return 0;
         } else {
-            printf("Head process found: %u\n", std::get<0>(head_process));
+//            printf("Head process found: %u\n", std::get<0>(head_process));
         }
 
         // get all children of head process
