@@ -93,7 +93,7 @@ std::string run_ps() {
 
 
 /**
- * Set the cpu time limit to 10 mins for safe development.
+ * Set the cpu time limit to 10 minutes for safe development.
  */
 void set_cpu_safety() {
     rlimit rilimit{};
