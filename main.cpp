@@ -128,7 +128,6 @@ int main(int argc, char **argv) {
     }
 
     u_int loop_count = 0;
-    process_list child_pl;
     for (;;) {
         printf("a1mon [counter=%2d, pid=%5u, target_pid=%5u, interval=%2d sec]:\n", loop_count, getpid(), pid,
                interval);
@@ -138,6 +137,7 @@ int main(int argc, char **argv) {
         printf("--------------------\n");
 
         process head_process = get_target(ps_output, pid);
+        process_list child_pl = get_childs(ps_output, std::get<0>(head_process));
         if (errno==1) {
             printf("a1mon: target appears to have terminated; cleaning\n");
             for (auto it = child_pl.rbegin(); it != child_pl.rend(); ++it) {
@@ -149,13 +149,12 @@ int main(int argc, char **argv) {
         }
 
         // get all children of head process
-        child_pl = get_childs(ps_output, std::get<0>(head_process));
         printf("List of monitored processes:\n");
         // print head process
         printf("[0:[%u,%s]", std::get<0>(head_process), std::get<2>(head_process).c_str());
         // iterate through child processes
         for (process_list::size_type i = 0; i != child_pl.size(); i++) {
-            printf(", %lu:[%u,%s]", i, std::get<0>(child_pl[i]), std::get<2>(child_pl[i]).c_str());
+            printf(", %lu:[%u,%s]", i+1, std::get<0>(child_pl[i]), std::get<2>(child_pl[i]).c_str());
         }
         printf("]\n");
 
