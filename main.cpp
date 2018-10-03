@@ -127,7 +127,6 @@ int main(int argc, char **argv) {
     u_int loop_count = 0;
     process_list child_pl;
     for (;;) {
-        // todo better formatting
         printf("a1mon [counter=%2d, pid=%5u, target_pid=%5u, interval=%2d sec]:\n", loop_count, getpid(), pid,
                interval);
 
@@ -135,9 +134,8 @@ int main(int argc, char **argv) {
         std::string ps_output = run_ps();
         printf("--------------------\n");
 
-        // TODO: pid is getting set to null
         process head_process = get_target(ps_output, pid);
-        if (std::get<0>(head_process) == 0) { //todo debug find null of
+        if (std::get<0>(head_process) == 0) {
             printf("a1mon: target appears to have terminated; cleaning\n");
             for (auto it = child_pl.rbegin(); it != child_pl.rend(); ++it) {
                 printf("terminating [%u, %s]\n", std::get<0>(*it), std::get<2>(*it).c_str());
