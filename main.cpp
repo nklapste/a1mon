@@ -108,13 +108,11 @@ int main(int argc, char **argv) {
 
     // parse command line args
     unsigned int interval;
-//    char *pid = nullptr;
     pid_t  pid;
     if (argc <= 1) {
         printf("ERROR: missing arguments\n");
         return 1;
     } else {
-//        pid = argv[1];
         pid = std::stoi(argv[1], nullptr, 10);
     }
     if (argc == 3) {
