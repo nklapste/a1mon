@@ -34,8 +34,11 @@ process get_target(const std::string &ps_output,  pid_t pid) {
     }
 
     if(std::regex_search(ps_output, matches, rgx)) {
+        return std::make_tuple(std::stoi(matches[2], nullptr, 10), std::stoi(matches[3], nullptr, 10), matches[5]);
+    } else {
+        // we failed to find the head process pid set errno to 1 to notify the loop to quit.
+        errno=1;
     }
-    return std::make_tuple(std::stoi(matches[2], nullptr, 10), std::stoi(matches[3], nullptr, 10), matches[5]);
 }
 
 
@@ -135,7 +138,7 @@ int main(int argc, char **argv) {
         printf("--------------------\n");
 
         process head_process = get_target(ps_output, pid);
-        if (std::get<0>(head_process) == 0) {
+        if (errno==1) {
             printf("a1mon: target appears to have terminated; cleaning\n");
             for (auto it = child_pl.rbegin(); it != child_pl.rend(); ++it) {
                 printf("terminating [%u, %s]\n", std::get<0>(*it), std::get<2>(*it).c_str());
@@ -149,7 +152,7 @@ int main(int argc, char **argv) {
         child_pl = get_childs(ps_output, std::get<0>(head_process));
         printf("List of monitored processes:\n");
         // print head process
-        printf("[0:[%u,%s]", pid, std::get<2>(head_process).c_str());
+        printf("[0:[%u,%s]", std::get<0>(head_process), std::get<2>(head_process).c_str());
         // iterate through child processes
         for (process_list::size_type i = 0; i != child_pl.size(); i++) {
             printf(", %lu:[%u,%s]", i, std::get<0>(child_pl[i]), std::get<2>(child_pl[i]).c_str());
