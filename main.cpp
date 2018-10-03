@@ -143,8 +143,6 @@ int main(int argc, char **argv) {
             }
             printf("exiting a1mon\n");
             return 0;
-        } else {
-//            printf("Head process found: %u\n", std::get<0>(head_process));
         }
 
         // get all children of head process
