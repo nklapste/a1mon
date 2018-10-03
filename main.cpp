@@ -76,7 +76,7 @@ process_list get_childs(const std::string &ps_output, const pid_t &ppid) {
 std::string run_ps() {
     std::string data;
     FILE *stream;
-    const int max_buffer = 3000;
+    const int max_buffer = 264;
     char buffer[max_buffer];
     stream = popen("ps -u $USER -o user,pid,ppid,state,start,cmd --sort start", "r");
     if (stream) {
@@ -84,7 +84,7 @@ std::string run_ps() {
             if (fgets(buffer, max_buffer, stream) != NULL) data.append(buffer);
         pclose(stream);
     }
-    std::cout << data << std::endl;
+    std::cout << data;
     return data;
 }
 
@@ -151,7 +151,7 @@ int main(int argc, char **argv) {
 
         // get all children of head process
         child_pl = get_childs(ps_output, std::get<0>(head_process));
-
+        printf("List of monitored processes:\n");
         // print head process
         printf("[0:[%u,%s]", pid, std::get<2>(head_process).c_str());
         // iterate through child processes
